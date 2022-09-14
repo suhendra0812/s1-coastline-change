@@ -15,6 +15,7 @@ from pystac import ItemCollection
 from rioxarray.merge import merge_arrays
 from shapely.geometry import MultiLineString, mapping
 
+from big_tide_prediction import tide_interpolation, tide_prediction
 from coastline_change_functions import (
     coregistration,
     create_transects,
@@ -26,8 +27,6 @@ from coastline_change_functions import (
     segmentation,
     smooth_linestring,
     subpixel_contours,
-    tide_interpolation,
-    tide_prediction,
     transect_analysis,
 )
 

@@ -32,59 +32,6 @@ def intersection_percent(item: Item, aoi: Dict[str, Any]) -> float:
     return intersection_percent
 
 
-def tide_prediction(
-    lon: float, lat: float, start_date: date, stop_date: date
-) -> pd.DataFrame:
-    logger.info("Tide predicting...")
-    url = "https://srgi.big.go.id/tides_data/prediction-v2"
-
-    params = {
-        "coords": f"{lon},{lat}",
-        "awal": f"{start_date.isoformat()}",
-        "akhir": f"{stop_date.isoformat()}",
-    }
-    with httpx.Client(timeout=30) as client:
-        r = client.get(url, params=params)
-
-        results = r.json()["results"]
-        predictions = results["predictions"]
-        ids = [i for i in predictions.keys()]
-        values = [v for v in predictions.values()]
-        error_list = ["Site", "is", "out", "of", "model", "grid", "OR", "land"]
-        if set(error_list).issubset(values[0]):
-            raise ValueError(" ".join(error_list))
-        df = pd.DataFrame(data=values, index=pd.Index(ids))
-        df.columns = ["lat", "lon", "date", "time", "level"]
-        df["lat"] = df["lat"].astype(float)
-        df["lon"] = df["lon"].astype(float)
-        df["level"] = df["level"].astype(float)
-        df["datetime"] = pd.to_datetime(
-            df["date"].str.cat(df["time"], sep="T"), utc=True
-        )
-
-    return df
-
-
-def tide_interpolation(
-    tide_df: pd.DataFrame, datetime_list: List[datetime]
-) -> pd.DataFrame:
-    tide_df.set_index("datetime", inplace=True)
-    index_list = pd.DatetimeIndex(
-        tide_df.index.tolist() + pd.to_datetime(datetime_list, utc=True).tolist()
-    )
-    interp_df = tide_df.copy()
-    interp_df = interp_df.reindex(index_list)
-    interp_df = interp_df[["level"]].interpolate(method="time")
-    interp_df = interp_df.loc[pd.to_datetime(datetime_list, utc=True)]
-    interp_df.sort_index(inplace=True)
-    interp_df["lat"] = np.repeat(tide_df["lat"].unique(), len(interp_df))
-    interp_df["lon"] = np.repeat(tide_df["lon"].unique(), len(interp_df))
-    interp_df.reset_index(inplace=True)
-    interp_df.rename(columns={"index": "datetime"}, inplace=True)
-    logger.info("Tide interpolated")
-    return interp_df
-
-
 def filter_tide(tide_group, tide):
     tide_list = [
         xr.concat(sorted(group, key=lambda x: abs(x.tide - tide))[:1], dim="time")
@@ -245,14 +192,14 @@ def lee_filter(img, size):
 
 
 def segmentation(img: np.ndarray, threshold: float = None) -> np.ndarray:
-    img = np.where(~np.isnan(img), img, 0)
-    if not threshold:
+    img = np.where(~np.isnan(img), img, 0) # jika ada nilai NaN di dalam piksel citra, maka diisi angka 0. karena akan error pada perhitungan threshold menggunakan otsu
+    if not threshold: # jika nilai threshold tidak disediakan, maka dilakukan perhitungan nilai threshold otomatis menggunakan Otsu
         threshold = filters.threshold_otsu(img)
     logger.info(f"Threshold: {threshold}")
-    binary = (img > threshold).astype(np.uint8)
-    binary = ndimage.binary_fill_holes(binary)
-    binary = morphology.remove_small_objects(binary).astype(int)
-    binary = morphology.closing(binary, morphology.disk(5))
+    binary = (img > threshold).astype(np.uint8) # proses thresholding citra berdasarkan nilai threshold, kemudian diubah ke dalam angka 0 dan 1
+    binary = ndimage.binary_fill_holes(binary) # pengisian lubang-lubang di dalam area piksel 1 (putih)
+    binary = morphology.remove_small_objects(binary).astype(int) # penghapusan objek-objek kecil (piksel 1/putih)
+    binary = morphology.closing(binary, morphology.disk(5)) # untuk smoothing area garis pantai
     return binary.astype(np.uint8)
 
 
@@ -517,61 +464,84 @@ def transect_analysis(line_gdf, transect_gdf, time_column, reverse=False):
     line_gdf = line_gdf.copy()
     transect_gdf = transect_gdf.copy()
 
-    line_gdf[time_column] = pd.to_datetime(line_gdf[time_column])
-    line_gdf["time_idx"], _ = pd.factorize(line_gdf[time_column])
+    line_gdf[time_column] = pd.to_datetime(line_gdf[time_column]) # memastikan formatnya menjadi objek datetime python
+    # line_gdf["time_idx"], _ = pd.factorize(line_gdf[time_column])
 
-    line_gdf.sort_values(by=time_column, inplace=True, ignore_index=True)
+    line_gdf.sort_values(by=time_column, inplace=True, ignore_index=True) # diurutkan berdasarkan waktu
     transect_gdf.reset_index(drop=True, inplace=True)
 
-    analysis_list = []
+    analysis_list = [] # list hasil analisis transek
 
-    for i, transect in transect_gdf.iterrows():
-        start, end = transect.geometry.boundary.geoms
-        if reverse:
-            start = end
-        if any(line_gdf.geometry.intersects(transect.geometry)):
+    for i, transect in transect_gdf.iterrows(): # looping row GeoDataFrame transek
+        start, end = transect.geometry.boundary.geoms # mengambil informasi titik awal dan akhir dari satu transek
+        if reverse: # jika reverse titiknya ditukar
+            start, end = end, start
+        if any(line_gdf.geometry.intersects(transect.geometry)): # jika antara garis pantai dan transek ada yang bersentuhan, maka lakukan proses di bawah ini
             intersect_gdf = line_gdf.copy()
+            # mengambil titik intersection-nya
             intersect_gdf.geometry = intersect_gdf.geometry.intersection(
                 transect.geometry
             )
-            geom_types = [geom.geom_type for geom in intersect_gdf.geometry]
-            if geom_types.count("Point") == len(intersect_gdf):
-                analysis_data = {"name": [i]}
-
+            geom_types = [geom.geom_type for geom in intersect_gdf.geometry] # list jenis geometry
+            if geom_types.count("Point") == len(intersect_gdf): # jika jumlah jenis geometry 'Point' sama dengan jumlah garis pantai, amak lanjutkan ke proses di bawah ini
+                analysis_data = {"name": [i]} # mengumpulkan infromasi hasil analisis, diawali dengan nama yang disi oleh urutan trasek
+                
+                # di bawah ini akan dilakukan perhitungan perubahan garis pantai setiap dua tahun sekali
+                # contoh:
+                # jika tahun di garis pantai = [2015, 2016, 2017, 2018], maka perubahan garis pantai akan dihitung sbb:
+                # 1. Garis pantai 2015 dikurangi garis pantai 2016
+                # 2. Garis pantai 2016 dikurangi garis pantai 2015
+                # 3. Garis pantai 2017 dikurangi garis pantai 2016
+                # 4. Garis pantai 2018 dikurangi garis pantai 2017
+                
+                # ini penjelasan kodingannya
+                # looping jumlah garis pantai dan urutannya
+                # jika jumlah garis pantai ada 3 berarti nilai j = [0, 1, 2] untuk digunakan sebagai indeks garis pantai lamam
+                # nilai k = j + 1, maka hasilnya k = [1, 2, 3] untuk digunakan sebagai indeks garis pantai baru
+                # kemudian dilakukan pengecekan, jika k (indeks garis pantai baru) terakhir sama dengan jumlah garis pantai maka proses berhenti (break)
                 for j in range(len(intersect_gdf)):
                     k = j + 1
                     if k == len(intersect_gdf):
                         break
+                    
+                    oldest_intersect = intersect_gdf.iloc[j] # garis pantai tanggal lama
+                    oldest_date = oldest_intersect[time_column] # tanggal garis pantai tanggal lama
+                    oldest_geom = oldest_intersect.geometry # geometry garis pantai tanggal lama
+                    oldest_distance = oldest_geom.distance(start) # jarak garis pantai tanggal lama dengan titik start dari transek
 
-                    oldest_intersect = intersect_gdf.iloc[j]
-                    oldest_date = oldest_intersect[time_column]
-                    oldest_geom = oldest_intersect.geometry
-                    oldest_distance = oldest_geom.distance(start)
+                    latest_intersect = intersect_gdf.iloc[k] # garis pantai tanggal baru
+                    latest_date = latest_intersect[time_column] # garis pantai tanggal baru
+                    latest_geom = latest_intersect.geometry # geometry garis pantai tanggal baru
+                    latest_distance = latest_geom.distance(start) # jarak garis pantai tanggal baru dengan titik start dari transek
 
-                    latest_intersect = intersect_gdf.iloc[k]
+                    date_str = oldest_date.strftime("%Y%m%d") # ini hanya untuk penamaan kolom, setiap hasil analisis di kolom tabel akan ditambahkan tanggal garis pantainya
+                    # date_idx = oldest_intersect["time_idx"]
 
-                    latest_date = latest_intersect[time_column]
-                    latest_geom = latest_intersect.geometry
-                    latest_distance = latest_geom.distance(start)
-
-                    date_str = oldest_date.strftime("%Y%m%d")
-                    date_idx = oldest_intersect["time_idx"]
-
-                    if j > 0:
+                    if j > 0: # pengecekan jika j > 0 maka lakukan perhitungan perubahan di bawah ini
                         change = latest_distance - oldest_distance
                         rate = change / ((latest_date - oldest_date).days / 365)
-                    else:
+                    else: # j = 0 maka belum ada perubahan
                         change = 0
                         rate = 0
 
+                    # masukkan hasil analisis berdasarkan tanggal garis pantai
                     analysis_data[f"distance_{date_str}"] = [oldest_distance]
                     analysis_data[f"change_{date_str}"] = [change]
                     analysis_data[f"rate_{date_str}"] = [rate]
 
-                analysis_geom = LineString(intersect_gdf.geometry)
+                # hasil analisis perubahan garis pantai disimpan dalam GeoDataFrame
+                # kolom GeoDataFrame berisi:
+                # - name (urutan transek)
+                # - distance_[tanggal_garis_pantai] (jarak dari titk awal transek)
+                # - change_[tanggal_garis_pantai] (perubahan jarak antara garis pantai lama dan baru)
+                # - rate_[tanggal_garis_pantai] (laju perubahan jarak antara garis pantai lama dan baru per satuan waktu)
+                # - mean_distance (rata-rata perubahan dari semua distance per tanggal)
+                # - mean_change (rata-rata perubahan dari semua change per tanggal)
+                # - mean_rate (rata-rata perubahan dari semua rate per tanggal)
+                analysis_geom = LineString(intersect_gdf.geometry) # membuat objek geometry line/garis berdasarkan geometry dari titik-titik intersection
+                analysis_gdf = gpd.GeoDataFrame(analysis_data, geometry=[analysis_geom]) # membuat objek GeoDataFrame berdasarkan hasil analisis dan geometry garis intersection
 
-                analysis_gdf = gpd.GeoDataFrame(analysis_data, geometry=[analysis_geom])
-
+                # di bawah ini perhitungan rata-rata masing-masing kolom distance, change dan rate
                 distance_columns = analysis_gdf.columns[
                     analysis_gdf.columns.str.contains("distance")
                 ]
@@ -589,14 +559,16 @@ def transect_analysis(line_gdf, transect_gdf, time_column, reverse=False):
                 ]
                 analysis_gdf["mean_rate"] = analysis_gdf[rate_columns].mean(axis=1)
 
+                # hasil analisis setiap transek digabungkan ke dalam list
                 analysis_list.append(analysis_gdf)
 
     if not analysis_list:
         logger.warning("No analysis resulted")
         return
 
+    # penggabungan list hasil analisis menjadi satu objek GeoDataFrame
     transect_analysis_gdf = pd.concat(analysis_list, ignore_index=True)
-    transect_analysis_gdf.crs = line_gdf.crs
+    transect_analysis_gdf.crs = line_gdf.crs # sistem proyeksi disamakan dengan garis pantai
 
     return transect_analysis_gdf
 
