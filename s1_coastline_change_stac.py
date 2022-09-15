@@ -34,7 +34,7 @@ logger = logging.getLogger("s1_coastline_change_stac")
 
 
 def main() -> None:
-    REGION_IDS = [715]
+    REGION_IDS = [653]
     TIDE_TYPES = ["mean"]
     CLIENT_URL = "https://planetarycomputer.microsoft.com/api/stac/v1"
     COLLECTION = "sentinel-1-rtc"
