@@ -162,26 +162,18 @@ def main() -> None:
 
             s1_data["tide"] = tide_data
 
-            logger.info("Filter data by tide...")
             group_s1_data = s1_data.groupby("time.year")
-            ht_s1_data = filter_tide(group_s1_data, ht)
-            lt_s1_data = filter_tide(group_s1_data, lt)
-            mean_s1_data = filter_tide(group_s1_data, mean)
 
-            tide_s1_data_dict = {
-                "ht": ht_s1_data,
-                "lt": lt_s1_data,
-                "mean": mean_s1_data,
+            tide_dict = {
+                "lt": lt,
+                "mean": mean,
+                "ht": ht
             }
 
-            tide_s1_data_dict = {
-                key: value
-                for key, value in tide_s1_data_dict.items()
-                if key in TIDE_TYPES
-            }
-
-            for tide_type, tide_s1_data in tide_s1_data_dict.items():
-                logger.info(f"Tide type: {tide_type}")
+            for tide_type in TIDE_TYPES:
+                logger.info(f"Filter data by tide type: {tide_type}...")
+                
+                tide_s1_data = filter_tide(group_s1_data, tide_dict[tide_type])
                 logger.info(f"Filtered tide S1 data count: {tide_s1_data.shape[0]}")
 
                 suboutput_dir = output_dir / tide_type
