@@ -55,7 +55,7 @@ def main() -> None:
         point_gdf = gpd.read_file(point_path)
 
         if PROVINCE:
-            REGION_IDS = region_gdf.query("province == @PROVINCE").index.tolist()
+            REGION_IDS = [i+1 for i in region_gdf.query("province == @PROVINCE").index.tolist()]
 
         for region_id in REGION_IDS:
             logger.info(f"Region ID: {region_id}")
@@ -172,7 +172,7 @@ def main() -> None:
 
             for tide_type in TIDE_TYPES:
                 logger.info(f"Filter data by tide type: {tide_type}...")
-                
+
                 tide_s1_data = filter_tide(group_s1_data, tide_dict[tide_type])
                 logger.info(f"Filtered tide S1 data count: {tide_s1_data.shape[0]}")
 
