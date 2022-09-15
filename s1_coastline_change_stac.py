@@ -184,6 +184,13 @@ def main() -> None:
                 logger.info(f"Tide type: {tide_type}")
                 logger.info(f"Filtered tide S1 data count: {tide_s1_data.shape[0]}")
 
+                suboutput_dir = output_dir / tide_type
+                suboutput_dir.mkdir(parents=True, exist_ok=True)
+
+                output_tifs = sorted(suboutput_dir.glob("*.tif"))
+                if len(output_tifs) == len(tide_s1_data.time):
+                    continue
+
                 logger.info("Load data from dask client...")
                 vh_data = tide_s1_data.load()
 
@@ -266,9 +273,6 @@ def main() -> None:
                 transect_analysis_gdf = transect_analysis(
                     coastline_gdf, transect_gdf, "time", reverse=True
                 )
-
-                suboutput_dir = output_dir / tide_type
-                suboutput_dir.mkdir(parents=True, exist_ok=True)
 
                 coastline_path = (
                     suboutput_dir / f"{region_id:04d}_s1_coastlines.geojson"
