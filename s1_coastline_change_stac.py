@@ -34,7 +34,7 @@ logger = logging.getLogger("s1_coastline_change_stac")
 
 
 def main() -> None:
-    REGION_IDS = [653]
+    REGION_IDS = [713]
     TIDE_TYPES = ["mean"]
     CLIENT_URL = "https://planetarycomputer.microsoft.com/api/stac/v1"
     COLLECTION = "sentinel-1-rtc"
@@ -48,6 +48,7 @@ def main() -> None:
     point_path = Path("./region/coastal_points.geojson")
 
     with Client(n_workers=4, threads_per_worker=2, memory_limit="4GB") as dask_client:
+        logger.info(f"Dask client dashboard link: {dask_client.dashboard_link}")
 
         region_gdf = gpd.read_file(region_path)
         point_gdf = gpd.read_file(point_path)
@@ -92,12 +93,7 @@ def main() -> None:
 
             item_list = sorted(item_list, key=lambda x: x.datetime)
             s1_items = ItemCollection(item_list)
-            logger.info(f"Found: {len(s1_items)} datasets")
-
-            s1_item_gdf = gpd.GeoDataFrame.from_features(
-                s1_items.to_dict(), crs="epsg:4326"
-            )
-            s1_item_gdf["area_percent"] = area_list
+            logger.info(f"S1 Found: {len(s1_items)} datasets")
 
             signed_s1_items = [pc.sign(item).to_dict() for item in s1_items]
 
@@ -129,6 +125,7 @@ def main() -> None:
             merged_dem_data
 
             times = s1_data.time.values
+            logger.info(f"Time count: {len(times)}")
 
             x = selected_point_gdf.unary_union.centroid.x
             y = selected_point_gdf.unary_union.centroid.y
@@ -147,6 +144,7 @@ def main() -> None:
                 interp_tide_df = pd.read_csv(tide_path)
 
             tide_list = interp_tide_df["level"].tolist()
+            logger.info(f"Tide count: {len(tide_list)}")
 
             lt = np.min(tide_list)
             ht = np.max(tide_list)
@@ -180,6 +178,7 @@ def main() -> None:
 
             for tide_type, tide_s1_data in tide_s1_data_dict.items():
                 logger.info(f"Tide type: {tide_type}")
+                logger.info(f"Filtered tide S1 data count: {tide_s1_data.shape[0]}")
 
                 logger.info("Load data from dask client...")
                 vh_data = tide_s1_data.load()
