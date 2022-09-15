@@ -310,9 +310,6 @@ def main() -> None:
             del merged_dem_data
             del tide_data
             del s1_data
-            del ht_s1_data
-            del lt_s1_data
-            del mean_s1_data
 
 
 if __name__ == "__main__":
