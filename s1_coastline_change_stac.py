@@ -266,6 +266,9 @@ def main() -> None:
                     coastline_gdf, transect_gdf, "time", reverse=True
                 )
 
+                if transect_analysis_gdf is None:
+                    continue
+                
                 coastline_path = (
                     suboutput_dir / f"{region_id:04d}_s1_coastlines.geojson"
                 )
