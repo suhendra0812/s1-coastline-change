@@ -35,6 +35,7 @@ logger = logging.getLogger("s1_coastline_change_stac")
 
 def main() -> None:
     REGION_IDS = [713]
+    PROVINCE = "JAWA TIMUR" # if defined, REGION_IDS will be overwritten. Set to None to use defined REGION_IDS.
     TIDE_TYPES = ["mean"]
     CLIENT_URL = "https://planetarycomputer.microsoft.com/api/stac/v1"
     COLLECTION = "sentinel-1-rtc"
@@ -52,6 +53,9 @@ def main() -> None:
 
         region_gdf = gpd.read_file(region_path)
         point_gdf = gpd.read_file(point_path)
+
+        if PROVINCE:
+            REGION_IDS = region_gdf.query("province == @PROVINCE").index.tolist()
 
         for region_id in REGION_IDS:
             logger.info(f"Region ID: {region_id}")
