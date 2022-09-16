@@ -1,5 +1,6 @@
 dask
 distributed
+eodag
 geopandas
 httpx
 matplotlib
@@ -12,6 +13,7 @@ pystac-client
 python-dateutil
 rioxarray
 scikit-image
+sertit
 stackstac
 thunder-registration
 xarray

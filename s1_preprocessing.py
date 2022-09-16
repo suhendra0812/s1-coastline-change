@@ -5,7 +5,6 @@ import shutil
 
 # import third party packages
 from dateutil.parser import parse
-from eodatasets3 import DatasetPrepare
 import geopandas as gpd
 from sertit import misc, snap
 
@@ -246,37 +245,42 @@ for i, region_id in enumerate(REGION_IDS):
         # shutil.rmtree(temp_dir, ignore_errors=True)
 
         # ============== DATASET METADATA GENERATING ======================
+        try:
+            from eodatasets3 import DatasetPrepare # type: ignore
 
-        for output_path in output_paths:
-            # define metadata path
-            metadata_path = output_path.with_suffix(".odc-metadata.yaml")
+            for output_path in output_paths:
+                # define metadata path
+                metadata_path = output_path.with_suffix(".odc-metadata.yaml")
 
-            logger.info(f"Metadata path: {metadata_path}")
+                logger.info(f"Metadata path: {metadata_path}")
 
-            if not metadata_path.exists():
-                # get sensing datetime from filename
-                sensing_time = parse(output_path.stem.split("_")[1])
+                if not metadata_path.exists():
+                    # get sensing datetime from filename
+                    sensing_time = parse(output_path.stem.split("_")[1])
 
-                # prepare dataset metadata
-                with DatasetPrepare(
-                    collection_location=output_path.parent,
-                    dataset_location=output_path.parent,
-                    metadata_path=metadata_path,
-                ) as p:
-                    p.platform = "sentinel-1"
-                    p.product_family = "gamma0_rtc"
-                    p.names.platform_abbreviated = platform_id.lower() # contoh: s1
-                    p.datetime = sensing_time
-                    p.properties.update({"odc:file_format": "GeoTIFF"})
-                    product_name = f"{platform_id.lower()}_{sensor_mode.lower()}_{p.product_family}_vh" # contoh: s1_iw_grd_vh
-                    p.names.product_name = product_name
-                    p.processed_now()
+                    # prepare dataset metadata
+                    with DatasetPrepare(
+                        collection_location=output_path.parent,
+                        dataset_location=output_path.parent,
+                        metadata_path=metadata_path,
+                    ) as p:
+                        p.platform = "sentinel-1"
+                        p.product_family = "gamma0_rtc"
+                        p.names.platform_abbreviated = platform_id.lower() # contoh: s1
+                        p.datetime = sensing_time
+                        p.properties.update({"odc:file_format": "GeoTIFF"})
+                        product_name = f"{platform_id.lower()}_{sensor_mode.lower()}_{p.product_family}_vh" # contoh: s1_iw_grd_vh
+                        p.names.product_name = product_name
+                        p.processed_now()
 
-                    p.note_measurement(
-                        "vh", output_path.name, relative_to_dataset_location=True
-                    )
+                        p.note_measurement(
+                            "vh", output_path.name, relative_to_dataset_location=True
+                        )
 
-                    p.done()
+                        p.done()
 
-            assert metadata_path.exists()
-            logger.info("Metadata created")
+                assert metadata_path.exists()
+                logger.info("Metadata created")
+
+        except ImportError as e:
+            logger.warning(f"{e}. Metadata creation is not executed.")

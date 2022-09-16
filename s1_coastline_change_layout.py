@@ -2,14 +2,14 @@ import logging
 import os
 from pathlib import Path
 
-from qgis.core import (
+from qgis.core import ( # type: ignore
     QgsApplication,
     QgsProject,
     QgsVectorLayer,
     QgsRasterLayer,
     QgsRectangle,
 )
-from qgis.gui import QgsMapCanvas
+from qgis.gui import QgsMapCanvas # type: ignore
 
 logging.basicConfig(
     level=logging.INFO, format="%(asctime)s [%(levelname)s] %(name)s: %(message)s"
