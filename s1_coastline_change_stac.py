@@ -57,8 +57,8 @@ def main() -> None:
         if PROVINCE:
             REGION_IDS = [i+1 for i in region_gdf.query("province == @PROVINCE").index.tolist()]
 
-        for region_id in REGION_IDS:
-            logger.info(f"Region ID: {region_id}")
+        for i, region_id in enumerate(REGION_IDS):
+            logger.info(f"({i+1}/{len(REGION_IDS)}) Region ID: {region_id}")
             selected_region_gdf = region_gdf.loc[[region_id - 1]]
             selected_point_gdf = point_gdf.loc[[region_id - 1]]
 
