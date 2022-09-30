@@ -22,13 +22,13 @@ logging.basicConfig(
 ) # logging sampai level INFO dengan format 'waktu [level] nama proses: pesan'
 
 SEARCH_PRODUCT_TYPE = "S1_SAR_GRD" # produk tipe yang diinginkan yang bisa didapat dengan memanggil 'eodag list' di terminal
-SEARCH_START_DATE = "2015-01-01" # tanggal awal dengan format 'yyyy-mm-dd'
+SEARCH_START_DATE = "2020-01-01" # tanggal awal dengan format 'yyyy-mm-dd'
 SEARCH_END_DATE = datetime.today().date().isoformat() # sama dengan tanggal awal, tapi didapat dari cara yang berbeda yaitu otomatis dari method 'today()', 'isoformat()' yaitu untuk memformat tanggal menjadi format 'yyyy-mm-dd'
 MIN_AREA = 98 # persentase area minimal yang digunakan untuk memfilter data sentinel-1 yang akan didownload
-REGION_IDS = [671] # list region id yang akan dilakukan analisis. Untuk menambahkan region id lebih dari satu [0000, 0001, ...]. Nanti akan dilooping satu per satu
+REGION_IDS = [459] # list region id yang akan dilakukan analisis. Untuk menambahkan region id lebih dari satu [0000, 0001, ...]. Nanti akan dilooping satu per satu
 TIDE_TYPES = ["mean"] # list tipe pasut yang akan digunakan. Tipe pasut digunakan untuk filter data sentinel-1 yang memiliki kesamaan tipe pasut. Untuk menambahkan tipe pasut lebih dari satu ["mean", "ht", "lt"]. Nanti akan dilooping satu per satu.
 OUTPUT_DIR = Path("./output").resolve() # folder untuk menyimpan metadata sentinel-1 dalam bentuk geojson
-S1_BASE_DIR = Path("/home/barata-serv/otomatisasi_barata/datasets") # folder untuk menyimpan data sentinel-1
+S1_BASE_DIR = Path("../../datasets") # folder untuk menyimpan data sentinel-1
 
 REGION_PATH = Path("./region/coastal_grids.geojson").resolve() # data polygon grid sebagai AOI pencarian data sentinel-1
 POINT_PATH = Path("./region/coastal_points.geojson").resolve() # data point pada setiap grid untuk prediksi pasut

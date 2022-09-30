@@ -34,8 +34,8 @@ logger = logging.getLogger("s1_coastline_change_stac")
 
 
 def main() -> None:
-    REGION_IDS = [713]
-    PROVINCE = "JAWA TIMUR" # if defined, REGION_IDS will be overwritten. Set to None to use defined REGION_IDS.
+    REGION_IDS = [530]
+    PROVINCE = None # if defined, REGION_IDS will be overwritten. Set to None to use defined REGION_IDS.
     TIDE_TYPES = ["mean"]
     CLIENT_URL = "https://planetarycomputer.microsoft.com/api/stac/v1"
     COLLECTION = "sentinel-1-rtc"
@@ -45,8 +45,8 @@ def main() -> None:
     COREGISTRATION = False
     THRESHOLD = None
 
-    region_path = Path("./region/coastal_grids.geojson")
-    point_path = Path("./region/coastal_points.geojson")
+    region_path = Path("./region/coastal_grids.shp")
+    point_path = Path("./region/coastal_points.shp")
 
     with Client(n_workers=4, threads_per_worker=2, memory_limit="4GB") as dask_client:
         logger.info(f"Dask client dashboard link: {dask_client.dashboard_link}")
